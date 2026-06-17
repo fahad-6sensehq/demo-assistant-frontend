@@ -1,7 +1,9 @@
 'use client';
 
 import type { ChatMessage } from '@/lib/types';
+import { hasInlineCitations } from '@/lib/citations';
 import { MessageContent } from '@/components/chat/message-content';
+import { SourcesList } from '@/components/chat/sources-list';
 
 function formatTime(dateString: string) {
   return new Date(dateString).toLocaleTimeString([], {
@@ -10,8 +12,19 @@ function formatTime(dateString: string) {
   });
 }
 
-export function MessageBubble({ message }: { message: ChatMessage }) {
+export function MessageBubble({
+  message,
+  onCitationClick,
+}: {
+  message: ChatMessage;
+  onCitationClick?: (fileId: string) => void;
+}) {
   const isUser = message.role === 'user';
+  const showSources =
+    !isUser &&
+    message.sources?.length &&
+    !hasInlineCitations(message.content) &&
+    onCitationClick;
 
   return (
     <div
@@ -29,7 +42,18 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
             Assistant
           </div>
         )}
-        <MessageContent content={message.content} isUser={isUser} />
+        <MessageContent
+          content={message.content}
+          isUser={isUser}
+          sources={message.sources}
+          onCitationClick={onCitationClick}
+        />
+        {showSources && (
+          <SourcesList
+            sources={message.sources!}
+            onCitationClick={onCitationClick}
+          />
+        )}
         <div
           className={`mt-2 text-[11px] ${isUser ? 'text-zinc-500' : 'text-zinc-600'}`}
         >

@@ -15,6 +15,15 @@ export interface ChatMessage {
   role: string;
   content: string;
   createdAt: string;
+  sources?: MessageSource[];
+}
+
+export interface MessageSource {
+  index: number;
+  fileId: string;
+  fileName: string;
+  excerpt?: string;
+  score?: number;
 }
 
 export interface ChatHistory {
@@ -25,6 +34,7 @@ export interface ChatHistory {
 export interface SendMessageResponse {
   reply: ChatMessage;
   messages: ChatMessage[];
+  sources?: MessageSource[];
 }
 
 export interface AdminUser {
@@ -59,4 +69,13 @@ export interface AdminUserChat {
   };
   conversationId: string;
   messages: ChatMessage[];
+}
+
+export interface UserFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  status: string;
+  chunkCount: number;
+  createdAt: string;
 }

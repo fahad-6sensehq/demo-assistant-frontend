@@ -1,14 +1,27 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { CitationChip } from '@/components/chat/citation-chip';
+import { replaceCitationsForMarkdown } from '@/lib/citations';
+import type { MessageSource } from '@/lib/types';
 
 interface MessageContentProps {
   content: string;
   isUser?: boolean;
+  sources?: MessageSource[];
+  onCitationClick?: (fileId: string) => void;
+}
+
+function transformUrl(url: string) {
+  if (url.startsWith('cite:')) {
+    return url;
+  }
+
+  return defaultUrlTransform(url);
 }
 
 function CodeBlock({
@@ -62,7 +75,17 @@ function CodeBlock({
   );
 }
 
-export function MessageContent({ content, isUser = false }: MessageContentProps) {
+export function MessageContent({
+  content,
+  isUser = false,
+  sources,
+  onCitationClick,
+}: MessageContentProps) {
+  const markdownContent = useMemo(
+    () => (isUser ? content : replaceCitationsForMarkdown(content, sources)),
+    [content, isUser, sources],
+  );
+
   const components = useMemo(
     () => ({
       p: ({ children }: { children?: React.ReactNode }) => (
@@ -90,16 +113,33 @@ export function MessageContent({ content, isUser = false }: MessageContentProps)
       }: {
         href?: string;
         children?: React.ReactNode;
-      }) => (
-        <a
-          href={href}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="text-emerald-400 underline underline-offset-2 hover:text-emerald-300"
-        >
-          {children}
-        </a>
-      ),
+      }) => {
+        if (href?.startsWith('cite:')) {
+          const fileId = href.slice('cite:'.length);
+          const sourceIndex = Number(children);
+          const source = sources?.find((item) => item.index === sourceIndex);
+
+          return (
+            <CitationChip
+              fileId={fileId}
+              sourceIndex={sourceIndex}
+              fileName={source?.fileName}
+              onClick={onCitationClick ?? (() => {})}
+            />
+          );
+        }
+
+        return (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="text-emerald-400 underline underline-offset-2 hover:text-emerald-300"
+          >
+            {children}
+          </a>
+        );
+      },
       h1: ({ children }: { children?: React.ReactNode }) => (
         <h1 className="mb-3 text-xl font-semibold last:mb-0">{children}</h1>
       ),
@@ -153,13 +193,17 @@ export function MessageContent({ content, isUser = false }: MessageContentProps)
       },
       pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
     }),
-    [isUser],
+    [isUser, onCitationClick, sources],
   );
 
   return (
     <div className="markdown-content text-[15px] text-zinc-100">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {content}
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={components}
+        urlTransform={transformUrl}
+      >
+        {markdownContent}
       </ReactMarkdown>
     </div>
   );
