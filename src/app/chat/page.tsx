@@ -36,17 +36,36 @@ export default function ChatPage() {
   }, [messages, sending]);
 
   async function handleSend(content: string) {
+    const optimisticId = `temp-${crypto.randomUUID()}`;
+    const optimisticMessage: ChatMessage = {
+      id: optimisticId,
+      role: 'user',
+      content,
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, optimisticMessage]);
     setSending(true);
     setError('');
 
     try {
       const response = await api.sendMessage(content);
-      setMessages(response.messages);
+      const mergedMessages = response.messages.map((message) =>
+        message.id === response.reply.id && !message.sources && response.sources
+          ? { ...message, sources: response.sources }
+          : message,
+      );
+      setMessages(mergedMessages);
     } catch (err) {
+      setMessages((prev) => prev.filter((message) => message.id !== optimisticId));
       setError(err instanceof Error ? err.message : 'Failed to send message');
     } finally {
       setSending(false);
     }
+  }
+
+  function handleCitationClick(fileId: string) {
+    console.log(fileId);
   }
 
   return (
@@ -83,7 +102,11 @@ export default function ChatPage() {
               )}
 
               {messages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  onCitationClick={handleCitationClick}
+                />
               ))}
 
               {sending && <TypingIndicator />}

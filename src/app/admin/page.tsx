@@ -56,9 +56,9 @@ export default function AdminPage() {
                     <h3 className="font-medium text-zinc-200">Users</h3>
                   </div>
                   <div className="divide-y divide-zinc-800">
-                    {users.map((user) => (
+                    {users.map((user, index) => (
                       <div
-                        key={user.id}
+                        key={user.id || `${user.email}-${index}`}
                         className="flex items-center justify-between px-4 py-3"
                       >
                         <div>
@@ -90,8 +90,14 @@ export default function AdminPage() {
                         No conversations yet
                       </p>
                     )}
-                    {chats.map((chat) => (
-                      <div key={chat.conversationId} className="px-4 py-3">
+                    {chats.map((chat, index) => (
+                      <div
+                        key={
+                          chat.conversationId ||
+                          `${chat.user?.id ?? chat.user?.email ?? 'chat'}-${index}`
+                        }
+                        className="px-4 py-3"
+                      >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-zinc-200">

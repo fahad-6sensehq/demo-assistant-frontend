@@ -7,9 +7,14 @@ import type {
   ChatHistory,
   SendMessageResponse,
   User,
+  UserFile,
 } from './types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+
+function resolveId(item: { id?: string; _id?: string }, fallback: string) {
+  return item.id ?? item._id ?? fallback;
+}
 
 class ApiError extends Error {
   constructor(
@@ -28,7 +33,11 @@ async function request<T>(
   const token = getToken();
   const headers = new Headers(options.headers);
 
-  if (!headers.has('Content-Type') && options.body) {
+  if (
+    !headers.has('Content-Type') &&
+    options.body &&
+    !(options.body instanceof FormData)
+  ) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -97,15 +106,52 @@ export const api = {
   },
 
   adminListUsers() {
-    return request<AdminUser[]>('/admin/users');
+    return request<(AdminUser & { _id?: string })[]>('/admin/users').then(
+      (users) =>
+        users.map((user) => ({
+          ...user,
+          id: resolveId(user, user.email),
+        })),
+    );
   },
 
   adminListChats() {
-    return request<AdminChatSummary[]>('/admin/chats');
+    return request<(AdminChatSummary & { user?: { _id?: string } | null })[]>(
+      '/admin/chats',
+    ).then((chats) =>
+      chats.map((chat) => ({
+        ...chat,
+        user: chat.user
+          ? {
+              ...chat.user,
+              id: resolveId(chat.user, chat.user.email),
+            }
+          : null,
+      })),
+    );
   },
 
   adminGetUserChat(userId: string) {
     return request<AdminUserChat>(`/admin/users/${userId}/chat`);
+  },
+
+  listEmbeddingFiles() {
+    return request<UserFile[]>('/embeddings/files');
+  },
+
+  uploadEmbeddingFile(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<UserFile>('/embeddings/files', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  deleteEmbeddingFile(fileId: string) {
+    return request<void>(`/embeddings/files/${fileId}`, {
+      method: 'DELETE',
+    });
   },
 };
 
